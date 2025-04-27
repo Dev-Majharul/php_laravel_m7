@@ -22,23 +22,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($file['size'] > $max_size) {
             $error = 'File size must be less than 5MB.';
         } else {
-            // Generate unique filename
-            $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-            $filename = uniqid() . '.' . $extension;
-            $upload_path = 'assets/images/' . $filename;
-
-            if (move_uploaded_file($file['tmp_name'], $upload_path)) {
-                try {
-                    $stmt = $pdo->prepare("INSERT INTO images (title, description, filename) VALUES (?, ?, ?)");
-                    $stmt->execute([$title, $description, $filename]);
-                    $message = 'Image uploaded successfully!';
-                } catch (PDOException $e) {
-                    $error = 'Database error: ' . $e->getMessage();
-                    // Delete the uploaded file if database insert fails
-                    unlink($upload_path);
+            // Define upload directory and ensure it exists
+            $upload_dir = 'assets/images/';
+            if (!is_dir($upload_dir)) {
+                // Create directory with 0755 permissions, recursive = true to create parent directories if needed
+                if (!mkdir($upload_dir, 0755, true)) {
+                    $error = 'Failed to create upload directory.';
                 }
-            } else {
-                $error = 'Failed to upload file.';
+            }
+
+            // Proceed only if no error (e.g., directory creation succeeded)
+            if (!$error) {
+                // Generate unique filename
+                $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+                $filename = uniqid() . '.' . $extension;
+                $upload_path = $upload_dir . $filename;
+
+                if (move_uploaded_file($file['tmp_name'], $upload_path)) {
+                    try {
+                        $stmt = $pdo->prepare("INSERT INTO images (title, description, filename) VALUES (?, ?, ?)");
+                        $stmt->execute([$title, $description, $filename]);
+                        $message = 'Image uploaded successfully!';
+                    } catch (PDOException $e) {
+                        $error = 'Database error: ' . $e->getMessage();
+                        // Delete the uploaded file if database insert fails
+                        unlink($upload_path);
+                    }
+                } else {
+                    $error = 'Failed to upload file.';
+                }
             }
         }
     }
@@ -95,4 +107,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </div>
 
-<?php require_once 'includes/footer.php'; ?> 
+<?php require_once 'includes/footer.php'; ?>
